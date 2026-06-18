@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Vision Aero — About the Model</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #0a0a0a;
+      background-image: radial-gradient(circle at top, #14241f 0%, #0a0a0a 60%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem;
+    }
+
+    .hero { text-align: center; margin-bottom: 1.5rem; }
+    .brand-name {
+      font-size: 13px; letter-spacing: 0.2em; color: #1D9E75;
+      text-transform: uppercase; font-weight: bold; margin-bottom: 4px;
+    }
+    .hero h1 { font-size: 22px; color: #fff; font-weight: 600; }
+    .hero p { font-size: 13px; color: #888; margin-top: 4px; max-width: 480px; margin-left:auto; margin-right:auto; }
+
+    .wrap { width: 100%; max-width: 760px; display: flex; flex-direction: column; gap: 1rem; }
+
+    .card {
+      background: #1a1a1a;
+      border-radius: 14px;
+      border: 1px solid #2a2a2a;
+      padding: 1.5rem;
+    }
+
+    h2 {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 1rem;
+    }
+
+    .pipeline-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+    .pipeline-step {
+      background: #161616;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+    .pipeline-step .num {
+      font-size: 11px;
+      color: #1D9E75;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .pipeline-step .label {
+      font-size: 12px;
+      color: #ccc;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .metric-box {
+      background: #161616;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+    }
+    .metric-box .value { font-size: 24px; font-weight: bold; }
+    .metric-box .label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+    .metric-box.cnn .value { color: #4A90D9; }
+    .metric-box.hybrid .value { color: #1D9E75; }
+
+    .img-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .img-col { flex: 1; min-width: 280px; }
+    .img-col img { width: 100%; border-radius: 8px; border: 1px solid #2a2a2a; }
+    .img-col p { font-size: 11px; color: #666; text-align: center; margin-top: 6px; }
+
+    .class-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .class-chip {
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 100px;
+      background: #161616;
+      border: 1px solid #2a2a2a;
+      color: #ccc;
+    }
+
+    .tech-stack { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tech-chip {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 100px;
+      background: #222;
+      border: 1px solid #2e2e2e;
+      color: #999;
+    }
+
+    p.body-text { font-size: 13px; color: #aaa; line-height: 1.7; }
+
+    .back-btn {
+      display: inline-block;
+      margin-top: 0.5rem;
+      background: #1D9E75;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .back-btn:hover { background: #0f6e50; }
+
+    .footer { margin-top: 2rem; text-align: center; font-size: 12px; color: #555; }
+    .footer strong { color: #888; }
+  </style>
+</head>
+<body>
+
+  <div class="hero">
+    <div class="brand-name">Vision Aero</div>
+    <h1>About the Model</h1>
+    <p>Technical details of the terrain classification and risk assessment pipeline powering this system</p>
+  </div>
+
+  <div class="wrap">
+
+    <div class="card">
+      <h2>System Pipeline</h2>
+      <div class="pipeline-grid">
+        <div class="pipeline-step"><div class="num">01</div><div class="label">Aerial Image Input</div></div>
+        <div class="pipeline-step"><div class="num">02</div><div class="label">Preprocessing &amp; Augmentation</div></div>
+        <div class="pipeline-step"><div class="num">03</div><div class="label">MobileNetV2 Feature Extraction</div></div>
+        <div class="pipeline-step"><div class="num">04</div><div class="label">Random Forest Classification</div></div>
+        <div class="pipeline-step"><div class="num">05</div><div class="label">Risk Scoring &amp; Decision</div></div>
+        <div class="pipeline-step"><div class="num">06</div><div class="label">Grad-CAM Explanation</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Model Performance</h2>
+      <div class="metrics-grid">
+        <div class="metric-box cnn">
+          <div class="value">92.78%</div>
+          <div class="label">CNN-Only Accuracy</div>
+        </div>
+        <div class="metric-box hybrid">
+          <div class="value">94.44%</div>
+          <div class="label">Hybrid Model Accuracy</div>
+        </div>
+      </div>
+      <p class="body-text" style="margin-top:1rem;">
+        The hybrid approach combines MobileNetV2 feature extraction with a Random Forest classifier
+        on top of the learned features. This improves accuracy by 1.66 percentage points over the
+        CNN alone, while keeping inference fast enough for near real-time use.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Terrain Classes &amp; Risk Mapping</h2>
+      <div class="class-chips">
+        <span class="class-chip">🛣️ Road — Low Risk</span>
+        <span class="class-chip">🌾 Grass — Low-Med Risk</span>
+        <span class="class-chip">🏢 Building — High Risk</span>
+        <span class="class-chip">🪨 Rocky — High Risk</span>
+        <span class="class-chip">🌲 Forest — Critical</span>
+        <span class="class-chip">💧 Water — Critical</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Training Diagnostics</h2>
+      <div class="img-row">
+        <div class="img-col">
+          <img src="/static/confusion_matrix.png" alt="Confusion Matrix"/>
+          <p>Confusion Matrix — Hybrid Model</p>
+        </div>
+        <div class="img-col">
+          <img src="/static/training_curves.png" alt="Training Curves"/>
+          <p>Training &amp; Validation Curves</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Technology Stack</h2>
+      <div class="tech-stack">
+        <span class="tech-chip">Python</span>
+        <span class="tech-chip">TensorFlow / Keras</span>
+        <span class="tech-chip">MobileNetV2</span>
+        <span class="tech-chip">Random Forest (scikit-learn)</span>
+        <span class="tech-chip">Flask</span>
+        <span class="tech-chip">OpenCV</span>
+        <span class="tech-chip">Grad-CAM</span>
+        <span class="tech-chip">Data Augmentation</span>
+      </div>
+    </div>
+
+    <div style="text-align:center;">
+      <a href="/" class="back-btn">← Back to Detector</a>
+    </div>
+
+    <div class="footer">
+      Developed by <strong>Team Vision Aero</strong><br>
+      Department of AIML
+    </div>
+
+  </div>
+
+</body>
+</html>

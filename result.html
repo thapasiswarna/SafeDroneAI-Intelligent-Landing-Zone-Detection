@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Vision Aero — Landing Analysis Result</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      background: radial-gradient(circle at top, #14241f 0%, #0a0a0a 60%);
+      display: flex; flex-direction: column; align-items: center;
+      padding: 2rem 1rem;
+    }
+    .hero { text-align: center; margin-bottom: 1.5rem; }
+    .brand-name {
+      font-size: 13px; letter-spacing: 0.2em; color: #1D9E75;
+      text-transform: uppercase; font-weight: bold; margin-bottom: 4px;
+    }
+    .hero h1 { font-size: 20px; color: #fff; font-weight: 600; }
+
+    .wrap { width: 480px; display: flex; flex-direction: column; gap: 1rem; }
+    .card { background: #1a1a1a; border-radius: 14px; padding: 1.5rem; border: 1px solid #2a2a2a; }
+    h2 { font-size: 13px; color: #555; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1rem; }
+    img.uploaded { width: 100%; border-radius: 10px; }
+
+    .image-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .image-col { flex: 1; min-width: 130px; }
+    .image-col p { font-size: 11px; color: #666; text-align: center; margin-top: 6px; }
+    .image-col img { width: 100%; border-radius: 8px; }
+
+    .terrain-big { font-size: 32px; font-weight: bold; margin-bottom: 0.25rem; margin-top: 1rem; }
+    .conf-label { font-size: 12px; color: #666; margin-bottom: 6px; }
+    .bar-wrap { background: #2a2a2a; border-radius: 4px; height: 8px; overflow: hidden; margin-bottom: 4px; }
+    .bar-fill { height: 100%; border-radius: 4px; }
+    .risk-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .risk-circle { width: 64px; height: 64px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 3px solid; flex-shrink: 0; }
+    .risk-num { font-size: 22px; font-weight: bold; }
+    .risk-sub { font-size: 9px; color: #888; }
+    .risk-level { font-size: 20px; font-weight: bold; }
+    .risk-desc { font-size: 12px; color: #666; margin-top: 2px; }
+    .action-box { padding: 0.75rem 1rem; border-radius: 8px; font-size: 13px; border-left: 4px solid; margin-top: 0.75rem; color: #ccc; }
+    .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .bar-label { font-size: 12px; color: #888; width: 70px; }
+    .bar-val { font-size: 12px; color: #ccc; min-width: 36px; text-align: right; }
+    .back-btn { display: block; text-align: center; background: #1D9E75; color: white; padding: 14px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: bold; }
+    .back-btn:hover { background: #0f6e50; }
+    .safe-box { border-radius: 10px; padding: 1rem; text-align: center; margin-bottom: 1rem; }
+    .safe-icon { font-size: 36px; }
+    .safe-title { font-size: 24px; font-weight: bold; margin-top: 4px; }
+    .safe-sub { font-size: 12px; color: #888; margin-top: 4px; }
+    .footer { margin-top: 1.5rem; text-align: center; font-size: 12px; color: #555; }
+    .footer strong { color: #888; }
+    .marker-note {
+      font-size: 11px; color: #5DCAA5; text-align: center; margin-top: 0.75rem;
+      background: #0f3d2e; border: 1px solid #1D9E75; border-radius: 8px; padding: 0.6rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="hero">
+    <div class="brand-name">Vision Aero</div>
+    <h1>Landing Zone Analysis Result</h1>
+  </div>
+
+  <div class="wrap">
+
+    <div class="card">
+      <h2>Uploaded Image &amp; AI Analysis</h2>
+      {% if heatmap_available %}
+      <div class="image-row">
+        <div class="image-col">
+          <img src="/static/uploads/{{ image_file }}" alt="original"/>
+          <p>Original Image</p>
+        </div>
+        <div class="image-col">
+          <img src="/static/uploads/{{ heatmap_file }}" alt="heatmap"/>
+          <p>AI Attention Heatmap</p>
+        </div>
+      </div>
+      {% else %}
+      <img class="uploaded" src="/static/uploads/{{ image_file }}" alt="uploaded"/>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h2>Landing Zone Decision</h2>
+
+      {% if low_confidence %}
+      <div class="safe-box" style="background:#3d2e0f; border: 2px solid #BA7517; margin-bottom: 1rem;">
+        <div class="safe-icon">🧑‍✈️</div>
+        <div class="safe-title" style="color:#BA7517; font-size:18px;">LOW CONFIDENCE — MANUAL VERIFICATION RECOMMENDED</div>
+        <div class="safe-sub">Model confidence below 60% — pilot should visually confirm terrain before proceeding</div>
+      </div>
+      {% endif %}
+
+      {% if risk_score <= 3 %}
+      <div class="safe-box" style="background:#0f3d2e; border: 2px solid #1D9E75;">
+        <div class="safe-icon">✅</div>
+        <div class="safe-title" style="color:#1D9E75;">SAFE TO LAND</div>
+        <div class="safe-sub">Landing zone cleared for descent</div>
+      </div>
+      {% elif risk_score <= 6 %}
+      <div class="safe-box" style="background:#3d2e0f; border: 2px solid #BA7517;">
+        <div class="safe-icon">⚠️</div>
+        <div class="safe-title" style="color:#BA7517;">PROCEED WITH CAUTION</div>
+        <div class="safe-sub">Moderate risk detected — verify before landing</div>
+      </div>
+      {% else %}
+      <div class="safe-box" style="background:#3d0f0f; border: 2px solid #A32D2D;">
+        <div class="safe-icon">🚫</div>
+        <div class="safe-title" style="color:#ff4444;">UNSAFE — DO NOT LAND</div>
+        <div class="safe-sub">Hazardous terrain detected — abort landing</div>
+      </div>
+      {% endif %}
+
+      <div class="terrain-big" style="color:{{ risk_color }}">{{ terrain }}</div>
+      <div class="conf-label">Confidence: {{ confidence }}%</div>
+      <div class="bar-wrap">
+        <div class="bar-fill" style="width:{{ confidence }}%; background:{{ risk_color }};"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Risk Assessment</h2>
+      <div class="risk-row">
+        <div class="risk-circle" style="border-color:{{ risk_color }};">
+          <div class="risk-num" style="color:{{ risk_color }};">{{ risk_score }}</div>
+          <div class="risk-sub">/10</div>
+        </div>
+        <div>
+          <div class="risk-level" style="color:{{ risk_color }};">{{ risk_level }}</div>
+          <div class="risk-desc">Based on terrain classification</div>
+        </div>
+      </div>
+      <div class="action-box" style="background:{{ risk_color }}18; border-color:{{ risk_color }};">
+        {{ action }}
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Top 3 Terrain Predictions</h2>
+      {% for name, prob in top3 %}
+      <div class="bar-row">
+        <span class="bar-label">{{ name }}</span>
+        <div class="bar-wrap" style="flex:1;">
+          <div class="bar-fill" style="width:{{ prob }}%; background:#1D9E75;"></div>
+        </div>
+        <span class="bar-val">{{ prob }}%</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <a href="/" class="back-btn">← Analyse Another Image</a>
+
+    <div class="footer">
+      Developed by <strong>Team Vision Aero</strong><br>
+      Department of AIML
+    </div>
+  </div>
+
+</body>
+</html>

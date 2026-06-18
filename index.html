@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Vision Aero — Drone Landing Zone Detector</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #0a0a0a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    .bg-gradient {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: radial-gradient(circle at top, #14241f 0%, #0a0a0a 60%);
+      z-index: -3;
+    }
+    .bg-grid {
+      position: fixed;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background-image:
+        repeating-linear-gradient(0deg, rgba(29,158,117,0.05) 0px, rgba(29,158,117,0.05) 1px, transparent 1px, transparent 60px),
+        repeating-linear-gradient(90deg, rgba(29,158,117,0.05) 0px, rgba(29,158,117,0.05) 1px, transparent 1px, transparent 60px);
+      animation: gridDrift 60s linear infinite;
+      z-index: -2;
+    }
+    @keyframes gridDrift {
+      0%   { transform: translate(0, 0); }
+      100% { transform: translate(60px, 60px); }
+    }
+
+    .radar-sweep {
+      position: fixed;
+      top: -10%;
+      left: 50%;
+      width: 1400px;
+      height: 1400px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: conic-gradient(from 0deg, rgba(29,158,117,0.12) 0deg, transparent 60deg, transparent 360deg);
+      animation: radarSpin 8s linear infinite;
+      z-index: -1;
+      pointer-events: none;
+    }
+    @keyframes radarSpin {
+      0%   { transform: translateX(-50%) rotate(0deg); }
+      100% { transform: translateX(-50%) rotate(360deg); }
+    }
+
+    .floating-drone {
+      position: fixed;
+      width: 90px;
+      height: 90px;
+      opacity: 0.08;
+      animation: floatDrone 18s ease-in-out infinite;
+      z-index: -1;
+      pointer-events: none;
+    }
+    .floating-drone.d1 { top: 12%; left: 8%; animation-delay: 0s; }
+    .floating-drone.d2 { top: 65%; left: 85%; width: 60px; height: 60px; animation-delay: 4s; animation-duration: 22s; }
+    .floating-drone.d3 { top: 75%; left: 12%; width: 70px; height: 70px; animation-delay: 9s; animation-duration: 20s; }
+
+    @keyframes floatDrone {
+      0%   { transform: translate(0, 0) rotate(0deg); }
+      25%  { transform: translate(30px, -25px) rotate(8deg); }
+      50%  { transform: translate(-10px, -45px) rotate(-5deg); }
+      75%  { transform: translate(-35px, -10px) rotate(6deg); }
+      100% { transform: translate(0, 0) rotate(0deg); }
+    }
+
+    .navbar {
+      width: 100%;
+      max-width: 920px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.25rem;
+      background: #161616cc;
+      backdrop-filter: blur(6px);
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+    .navbar .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: bold;
+      color: #1D9E75;
+      letter-spacing: 0.1em;
+      text-decoration: none;
+    }
+    .navbar .nav-links { display: flex; gap: 0.5rem; }
+    .navbar .nav-links a {
+      font-size: 13px;
+      color: #999;
+      text-decoration: none;
+      padding: 6px 14px;
+      border-radius: 8px;
+      transition: all 0.15s;
+    }
+    .navbar .nav-links a:hover { color: #fff; background: #222; }
+    .navbar .nav-links a.active {
+      color: #1D9E75;
+      background: #0f3d2e;
+      border: 1px solid #1D9E75;
+    }
+
+    .hero { text-align: center; margin-bottom: 1.5rem; position: relative; z-index: 1; }
+    .drone-icon { margin-bottom: 0.5rem; display: flex; justify-content: center; }
+    .drone-icon svg { animation: pulseGlow 3s ease-in-out infinite; }
+    @keyframes pulseGlow {
+      0%, 100% { filter: drop-shadow(0 0 2px rgba(29,158,117,0.3)); }
+      50%      { filter: drop-shadow(0 0 10px rgba(29,158,117,0.7)); }
+    }
+
+    .brand-name {
+      font-size: 14px;
+      letter-spacing: 0.2em;
+      color: #1D9E75;
+      text-transform: uppercase;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+    .hero h1 {
+      font-size: 28px;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+    .hero p {
+      font-size: 14px;
+      color: #888;
+      max-width: 420px;
+      margin: 0 auto;
+    }
+
+    .stats-strip {
+      display: flex;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+    }
+    .stat-item { text-align: center; padding: 0 0.5rem; }
+    .stat-value { font-size: 22px; font-weight: bold; color: #1D9E75; }
+    .stat-label { font-size: 11px; color: #777; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+    .stat-divider { width: 1px; background: #2a2a2a; align-self: stretch; }
+
+    .card {
+      background: #1a1a1aee;
+      backdrop-filter: blur(6px);
+      padding: 2.5rem;
+      border-radius: 16px;
+      border: 1px solid #2a2a2a;
+      width: 440px;
+      text-align: center;
+      box-shadow: 0 0 40px rgba(29,158,117,0.06);
+      position: relative;
+      z-index: 1;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #0f3d2e;
+      color: #1D9E75;
+      font-size: 11px;
+      padding: 4px 12px;
+      border-radius: 100px;
+      margin-bottom: 1rem;
+      border: 1px solid #1D9E75;
+    }
+
+    .sub { font-size: 13px; color: #888; margin-bottom: 1.5rem; }
+
+    .tab-switch {
+      display: flex;
+      background: #111;
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 1.5rem;
+      border: 1px solid #2a2a2a;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: bold;
+      color: #777;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: none;
+      border: none;
+    }
+    .tab-btn.active { background: #1D9E75; color: white; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .upload-area {
+      border: 2px dashed #333;
+      border-radius: 12px;
+      padding: 2.5rem 1rem;
+      margin-bottom: 1.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .upload-area:hover { border-color: #1D9E75; background: #0f3d2e22; }
+    .upload-icon { font-size: 40px; margin-bottom: 0.5rem; }
+    .upload-text { color: #666; font-size: 13px; }
+    #preview {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      display: none;
+    }
+    input[type=file] { display: none; }
+
+    button {
+      background: #1D9E75;
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 15px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    button:hover { background: #0f6e50; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .model-info { margin-top: 1.5rem; display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap; }
+    .info-chip { font-size: 11px; color: #999; background: #222; padding: 4px 10px; border-radius: 100px; border: 1px solid #2e2e2e; }
+    .info-chip.accent { color: #4A90D9; background: #10202e; border-color: #2a4a66; }
+
+    .features {
+      width: 440px;
+      margin-top: 1.5rem;
+      background: #161616ee;
+      backdrop-filter: blur(6px);
+      border: 1px solid #2a2a2a;
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+    .features h3 {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.75rem;
+      text-align: left;
+    }
+    .feature-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: #ccc;
+      padding: 7px 6px;
+      border-radius: 8px;
+      transition: background 0.15s;
+    }
+    .feature-row:hover { background: #1f1f1f; }
+    .feature-row .icon { font-size: 15px; width: 20px; text-align: center; }
+    .feature-row.accent .icon { color: #4A90D9; }
+
+    /* Telemetry panel */
+    .telemetry-card {
+      width: 440px;
+      margin-top: 1.5rem;
+      background: #161616ee;
+      backdrop-filter: blur(6px);
+      border: 1px solid #2a2a2a;
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+    .telemetry-card h3 {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 1rem;
+      text-align: left;
+    }
+    .tele-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 0.9rem;
+    }
+    .tele-row .icon { font-size: 15px; width: 22px; text-align: center; flex-shrink: 0; }
+    .tele-row label {
+      font-size: 12px;
+      color: #ccc;
+      width: 70px;
+      flex-shrink: 0;
+    }
+    .tele-row input[type=range] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 4px;
+      background: #2a2a2a;
+      border-radius: 2px;
+      outline: none;
+    }
+    .tele-row input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #1D9E75;
+      cursor: pointer;
+    }
+    .tele-row .tele-val {
+      font-size: 12px;
+      color: #1D9E75;
+      font-weight: bold;
+      width: 55px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .tele-row input[type=checkbox] {
+      width: 16px; height: 16px;
+      accent-color: #1D9E75;
+      cursor: pointer;
+    }
+    .tele-row .gps-label {
+      font-size: 12px;
+      color: #ccc;
+      margin-left: 6px;
+    }
+
+    .tele-result {
+      margin-top: 1rem;
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      font-size: 12px;
+      line-height: 1.6;
+      display: none;
+    }
+    .tele-result.show { display: block; }
+    .tele-result .tele-result-title {
+      font-weight: bold;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .footer { margin-top: 2rem; text-align: center; font-size: 12px; color: #555; position: relative; z-index: 1; }
+    .footer strong { color: #888; }
+
+    .camera-wrap {
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+      background: #000;
+      position: relative;
+      border: 2px solid #333;
+    }
+    #videoFeed, #captureCanvas { width: 100%; display: block; }
+    #captureCanvas { display: none; }
+    .camera-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      border: 2px solid rgba(29,158,117,0.4);
+      box-shadow: inset 0 0 60px rgba(29,158,117,0.15);
+    }
+    .camera-hint { font-size: 11px; color: #666; margin-bottom: 1rem; }
+    .cam-status {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .cam-dot { width: 7px; height: 7px; border-radius: 50%; background: #444; }
+    .cam-dot.live { background: #1D9E75; animation: pulse 1.4s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+    #loadingOverlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(10,10,10,0.85);
+      z-index: 999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .spinner {
+      width: 60px; height: 60px;
+      border: 4px solid #2a2a2a;
+      border-top: 4px solid #1D9E75;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loading-text { color: #1D9E75; margin-top: 1.5rem; font-size: 14px; letter-spacing: 0.05em; }
+  </style>
+</head>
+<body>
+
+  <div class="bg-gradient"></div>
+  <div class="bg-grid"></div>
+  <div class="radar-sweep"></div>
+
+  <svg class="floating-drone d1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="2.5" fill="#1D9E75"/>
+    <line x1="12" y1="9.5" x2="12" y2="5" stroke="#1D9E75" stroke-width="1.5"/>
+    <line x1="12" y1="14.5" x2="12" y2="19" stroke="#1D9E75" stroke-width="1.5"/>
+    <line x1="9.5" y1="12" x2="5" y2="12" stroke="#1D9E75" stroke-width="1.5"/>
+    <line x1="14.5" y1="12" x2="19" y2="12" stroke="#1D9E75" stroke-width="1.5"/>
+    <circle cx="5" cy="12" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+    <circle cx="19" cy="12" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+    <circle cx="12" cy="5" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+    <circle cx="12" cy="19" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+  </svg>
+  <svg class="floating-drone d2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="2.5" fill="#1D9E75"/>
+    <line x1="12" y1="9.5" x2="12" y2="5" stroke="#1D9E75" stroke-width="1.5"/>
+    <line x1="12" y1="14.5" x2="12" y2="19" stroke="#1D9E75" stroke-width="1.5"/>
+    <line x1="9.5" y1="12" x2="5" y2="12" stroke="#1D9E75" stroke-width="1.5"/>
+    <line x1="14.5" y1="12" x2="19" y2="12" stroke="#1D9E75" stroke-width="1.5"/>
+    <circle cx="5" cy="12" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+    <circle cx="19" cy="12" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+    <circle cx="12" cy="5" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+    <circle cx="12" cy="19" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+  </svg>
+  <svg class="floating-drone d3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="2.5" fill="#1D9E75"/>
+    <line x1="12" y1="9.5" x2="12" y2="5" stroke="#1D9E75" stroke-width="1.5"/>
+    <line x1="12" y1="14.5" x2="12" y2="19" stroke="#1D9E75" stroke-width="1.5"/>
+    <line x1="9.5" y1="12" x2="5" y2="12" stroke="#1D9E75" stroke-width="1.5"/>
+    <line x1="14.5" y1="12" x2="19" y2="12" stroke="#1D9E75" stroke-width="1.5"/>
+    <circle cx="5" cy="12" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+    <circle cx="19" cy="12" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+    <circle cx="12" cy="5" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+    <circle cx="12" cy="19" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+  </svg>
+
+  <nav class="navbar">
+    <a href="/" class="nav-brand">🛰️ VISION AERO</a>
+    <div class="nav-links">
+      <a href="/" class="active">Detector</a>
+      <a href="/history">Flight Log</a>
+      <a href="/about">About Model</a>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div class="drone-icon">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="2.5" fill="#1D9E75"/>
+        <line x1="12" y1="9.5" x2="12" y2="5" stroke="#1D9E75" stroke-width="1.5"/>
+        <line x1="12" y1="14.5" x2="12" y2="19" stroke="#1D9E75" stroke-width="1.5"/>
+        <line x1="9.5" y1="12" x2="5" y2="12" stroke="#1D9E75" stroke-width="1.5"/>
+        <line x1="14.5" y1="12" x2="19" y2="12" stroke="#1D9E75" stroke-width="1.5"/>
+        <circle cx="5" cy="12" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+        <circle cx="19" cy="12" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+        <circle cx="12" cy="5" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+        <circle cx="12" cy="19" r="2" stroke="#1D9E75" stroke-width="1.5" fill="none"/>
+      </svg>
+    </div>
+    <div class="brand-name">Vision Aero</div>
+    <h1>AI-Powered Safe Landing Zone Detection</h1>
+    <p>for Autonomous Drones — analyse aerial imagery and get an instant terrain safety verdict</p>
+  </div>
+
+  <div class="stats-strip">
+    <div class="stat-item">
+      <div class="stat-value">94.4%</div>
+      <div class="stat-label">Model Accuracy</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <div class="stat-value">6</div>
+      <div class="stat-label">Terrain Classes</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <div class="stat-value">&lt;3s</div>
+      <div class="stat-label">Inference Time</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="badge">📡 Aerial Terrain Intelligence</div>
+    <p class="sub">Upload an aerial image or use a live camera feed to assess landing risk</p>
+
+    <div class="tab-switch">
+      <button type="button" class="tab-btn active" id="tabUploadBtn" onclick="switchTab('upload')">📁 Upload Image</button>
+      <button type="button" class="tab-btn" id="tabCameraBtn" onclick="switchTab('camera')">🎥 Live Camera</button>
+    </div>
+
+    <div class="tab-content active" id="uploadTab">
+      <form action="/predict" method="POST" enctype="multipart/form-data" id="uploadForm">
+        <div class="upload-area" onclick="document.getElementById('imgInput').click()">
+          <img id="preview" src="" alt="preview"/>
+          <div id="upload-content">
+            <div class="upload-icon">🛰️</div>
+            <p class="upload-text">Click to upload aerial image</p>
+            <p class="upload-text" style="font-size:11px; margin-top:4px;">JPG, PNG supported</p>
+          </div>
+        </div>
+        <input type="file" id="imgInput" name="image" accept="image/*" onchange="previewImage(event)" required/>
+        <button type="submit" id="analyseBtn">🔍 Analyse Landing Zone</button>
+      </form>
+    </div>
+
+    <div class="tab-content" id="cameraTab">
+      <div class="cam-status">
+        <span class="cam-dot" id="camDot"></span>
+        <span id="camStatusText">Camera not started</span>
+      </div>
+      <div class="camera-wrap">
+        <video id="videoFeed" autoplay playsinline></video>
+        <canvas id="captureCanvas"></canvas>
+        <div class="camera-overlay"></div>
+      </div>
+      <p class="camera-hint">Point the camera at an aerial/satellite image on a screen or printed photo, then capture a frame to simulate a live drone feed.</p>
+      <button type="button" id="startCamBtn" onclick="startCamera()">🎥 Start Camera</button>
+      <form action="/predict" method="POST" enctype="multipart/form-data" id="cameraForm" style="margin-top:0.75rem; display:none;">
+        <input type="hidden" name="image_data" id="imageDataInput"/>
+        <button type="button" id="captureBtn" onclick="captureFrame()">📸 Capture &amp; Analyse</button>
+      </form>
+    </div>
+
+    <div class="model-info">
+      <span class="info-chip">MobileNetV2</span>
+      <span class="info-chip">Hybrid Random Forest</span>
+      <span class="info-chip">Transfer Learning</span>
+      <span class="info-chip accent">Grad-CAM</span>
+    </div>
+  </div>
+
+  <div class="features">
+  <h3>What this system does</h3>
+  <div class="feature-row"><span class="icon">📍</span> Terrain Classification (6 classes)</div>
+  <div class="feature-row"><span class="icon">⚠️</span> Risk Score &amp; Hazard Assessment</div>
+  <div class="feature-row"><span class="icon">🧠</span> Autonomous Landing Decision</div>
+  <div class="feature-row accent"><span class="icon">🔥</span> AI Attention Heatmap (Explainable AI)</div>
+  <div class="feature-row"><span class="icon">🎥</span> Live Camera Capture</div>
+  <div class="feature-row"><span class="icon">🧑‍✈️</span> Low-Confidence Pilot Alert</div>
+  <div class="feature-row"><span class="icon">🛠️</span> Pre-Landing Telemetry Check</div>
+  </div>
+
+  <div class="telemetry-card">
+    <h3>Pre-Landing Telemetry (Simulated)</h3>
+
+    <div class="tele-row">
+      <span class="icon">🔋</span>
+      <label>Battery</label>
+      <input type="range" id="battery" min="0" max="100" value="80" oninput="updateTeleVal('battery')"/>
+      <span class="tele-val" id="batteryVal">80%</span>
+    </div>
+
+    <div class="tele-row">
+      <span class="icon">📏</span>
+      <label>Altitude</label>
+      <input type="range" id="altitude" min="0" max="200" value="50" oninput="updateTeleVal('altitude')"/>
+      <span class="tele-val" id="altitudeVal">50m</span>
+    </div>
+
+    <div class="tele-row">
+      <span class="icon">🌬️</span>
+      <label>Wind Speed</label>
+      <input type="range" id="wind" min="0" max="60" value="8" oninput="updateTeleVal('wind')"/>
+      <span class="tele-val" id="windVal">8 m/s</span>
+    </div>
+
+    <div class="tele-row">
+      <span class="icon">📡</span>
+      <label>GPS Lock</label>
+      <input type="checkbox" id="gpsLock" checked/>
+      <span class="gps-label">Signal acquired</span>
+    </div>
+
+    <button type="button" onclick="runTelemetryCheck()">🛠️ Run Pre-Landing Check</button>
+
+    <div class="tele-result" id="teleResult"></div>
+  </div>
+
+  <div class="footer">
+    Developed by <strong>Team Vision Aero</strong><br>
+    Department of AIML
+  </div>
+
+  <div id="loadingOverlay">
+    <div class="spinner"></div>
+    <p class="loading-text">Analysing terrain &amp; generating heatmap...</p>
+  </div>
+
+  <script>
+    function switchTab(tab) {
+      document.getElementById('uploadTab').classList.remove('active');
+      document.getElementById('cameraTab').classList.remove('active');
+      document.getElementById('tabUploadBtn').classList.remove('active');
+      document.getElementById('tabCameraBtn').classList.remove('active');
+
+      if (tab === 'upload') {
+        document.getElementById('uploadTab').classList.add('active');
+        document.getElementById('tabUploadBtn').classList.add('active');
+      } else {
+        document.getElementById('cameraTab').classList.add('active');
+        document.getElementById('tabCameraBtn').classList.add('active');
+      }
+    }
+
+    function previewImage(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const preview = document.getElementById('preview');
+        preview.src = ev.target.result;
+        preview.style.display = 'block';
+        document.getElementById('upload-content').style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', function() {
+      const btn = document.getElementById('analyseBtn');
+      btn.disabled = true;
+      btn.style.opacity = '0.7';
+      document.getElementById('loadingOverlay').style.display = 'flex';
+    });
+
+    let stream = null;
+
+    async function startCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        const video = document.getElementById('videoFeed');
+        video.srcObject = stream;
+
+        document.getElementById('camDot').classList.add('live');
+        document.getElementById('camStatusText').textContent = 'Camera live';
+        document.getElementById('startCamBtn').style.display = 'none';
+        document.getElementById('cameraForm').style.display = 'block';
+      } catch (err) {
+        document.getElementById('camStatusText').textContent = 'Camera access denied or unavailable';
+        alert('Could not access camera. Please allow camera permission and try again.');
+      }
+    }
+
+    function captureFrame() {
+      const video = document.getElementById('videoFeed');
+      const canvas = document.getElementById('captureCanvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const imageData = canvas.toDataURL('image/jpeg', 0.9);
+      document.getElementById('imageDataInput').value = imageData;
+
+      const btn = document.getElementById('captureBtn');
+      btn.disabled = true;
+      btn.style.opacity = '0.7';
+      document.getElementById('loadingOverlay').style.display = 'flex';
+
+      document.getElementById('cameraForm').submit();
+    }
+
+    function updateTeleVal(id) {
+      const el = document.getElementById(id);
+      const val = document.getElementById(id + 'Val');
+      if (id === 'battery') val.textContent = el.value + '%';
+      else if (id === 'altitude') val.textContent = el.value + 'm';
+      else if (id === 'wind') val.textContent = el.value + ' m/s';
+    }
+
+    function runTelemetryCheck() {
+      const battery = parseInt(document.getElementById('battery').value);
+      const altitude = parseInt(document.getElementById('altitude').value);
+      const wind = parseInt(document.getElementById('wind').value);
+      const gpsLock = document.getElementById('gpsLock').checked;
+
+      const issues = [];
+      let status = 'go';
+
+      if (battery < 20) { issues.push('Battery critically low (' + battery + '%) — land immediately at nearest safe zone.'); status = 'no-go'; }
+      else if (battery < 40) { issues.push('Battery low (' + battery + '%) — prioritize landing soon.'); if (status === 'go') status = 'caution'; }
+
+      if (wind > 40) { issues.push('Wind speed too high (' + wind + ' m/s) — landing not recommended.'); status = 'no-go'; }
+      else if (wind > 20) { issues.push('Elevated wind speed (' + wind + ' m/s) — expect reduced stability during descent.'); if (status === 'go') status = 'caution'; }
+
+      if (!gpsLock) { issues.push('GPS signal lost — positional accuracy compromised.'); status = 'no-go'; }
+
+      if (altitude > 150) { issues.push('High altitude (' + altitude + 'm) — begin controlled descent before final approach.'); if (status === 'go') status = 'caution'; }
+
+      const result = document.getElementById('teleResult');
+      result.classList.add('show');
+
+      if (status === 'go') {
+        result.style.background = '#0f3d2e';
+        result.style.border = '1px solid #1D9E75';
+        result.innerHTML = '<div class="tele-result-title" style="color:#1D9E75;">✅ All systems nominal</div>' +
+          '<div style="color:#ccc;">Battery, wind, GPS, and altitude are all within safe operating ranges. Proceed to terrain analysis.</div>';
+      } else if (status === 'caution') {
+        result.style.background = '#3d2e0f';
+        result.style.border = '1px solid #BA7517';
+        result.innerHTML = '<div class="tele-result-title" style="color:#BA7517;">⚠️ Proceed with caution</div>' +
+          '<div style="color:#ccc;">' + issues.join('<br>') + '</div>';
+      } else {
+        result.style.background = '#3d0f0f';
+        result.style.border = '1px solid #A32D2D';
+        result.innerHTML = '<div class="tele-result-title" style="color:#ff6b6b;">🚫 Landing not recommended</div>' +
+          '<div style="color:#ccc;">' + issues.join('<br>') + '</div>';
+      }
+    }
+  </script>
+</body>
+</html>
